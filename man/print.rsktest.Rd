@@ -1,0 +1,31 @@
+\name{print.rsktest}
+\alias{print.rsktest}
+\title{Print an Object}
+\usage{
+  \method{print}{rsktest} (x, digits = 4, ...)
+}
+\arguments{
+  \item{x}{the object to be printed, must be the output
+  from \code{regionalSeaken}.}
+
+  \item{digits}{the number of digits to use when printing
+  numeric values.}
+
+  \item{...}{further arguments for other methods.}
+}
+\value{
+  The object is returned invisibly.
+}
+\description{
+  Print the results of the regional seasonal Kendall trend
+  test.
+}
+\note{
+  Three p-values are printed for the analysis. The raw
+  p-value is based only on the computed variance of S. The
+  p-value corrected for serial correlation includes the
+  adjustement described in Hirsh and Slack. The p-value
+  corected for serial and spatial correlation also includes
+  the adjustment describe in Sprague and others.
+}
+

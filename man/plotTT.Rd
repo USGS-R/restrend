@@ -1,0 +1,26 @@
+\name{plotTT}
+\alias{plotTT}
+\title{Plot Tobit Trends}
+\usage{
+  plotTT(Station, Sname, device)
+}
+\arguments{
+  \item{Station}{the station identifier.}
+
+  \item{Sname}{the response variable.}
+
+  \item{device}{the name of the graphics device. Defaults
+  to a valid graphics device on any platform. May be "pdf"
+  to create a pdf file.}
+}
+\value{
+  The name of the graphics device.
+}
+\description{
+  Create a series of diagnostic plots for a single Tobit
+  trend test.
+}
+\seealso{
+  \code{\link{plot.summary.censReg}}
+}
+

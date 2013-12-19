@@ -1,0 +1,155 @@
+\documentclass{article}
+\parskip 3pt
+\usepackage{pdfpages}
+%\VignetteIndexEntry{Trends in Major Ions}
+%\VignetteDepends{restrend}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\raggedright
+\parindent 30 pt
+
+\title{Trend Analysis of Uncensored Major Ions}
+
+\author{Dave Lorenz}
+
+\maketitle
+
+This example illustrates the data manipulations for the seasonal Kendall analysis of uncensored data. Major ions are typically uncensored in natural waters and provide a useful example. This example also uses a common time frame for all of the trend tests. The common time frame facilitates comparing trends among the stations. Most often users will want to divide trend analyses into similar groups of analytes like major ions, nutrients and so forth because they will be analyzed in similar ways and will have common sampling time frames.
+
+The data used in this application are a small subset of the data used by Schertz and others (1991). The data are samples taken from water year 1969 (October, 1968) through water year 1989 (September, 1989). Nineteen stations were selected and only calcium and chloride were selected for the major ions. The data were modified by removing the remark columns associated with those constituents to make the analysis more straightforward.
+
+<<echo=TRUE>>=
+# Load the restrend package and the data
+library(restrend)
+data(EstrendSub)
+head(EstrendSub)
+@
+
+\eject
+\section{Summarize the Sample Data}
+
+In general, it is desirable, but not necessary, to subset the data before proceeding with the analysis of a subset of the constituents. Before these data are subsetted, the FLOW column must be created. The flow data are in two columns \texttt{QI}, the flow at the time of the sample; and \texttt{QD}, the mean flow on the day of the sample. The \texttt{coalesce} function in the \texttt{USGSwsBase} package can used to select the non-missing value for flow. 
+
+<<echo=TRUE>>=
+# Compute FLOW.
+EstrendSub <- transform(EstrendSub, FLOW=coalesce(QI, QD))
+# Create the subset
+Majors <- subset(EstrendSub, select=c("STAID", "DATES", "FLOW", 
+																			"Calcium", "Chloride"))
+@
+
+The \texttt{sampReport} function creates a simple PDF file that contains a report of the sample date ranges and graph of samples for each site. It can be used to help define the starting and ending date ranges for the trend tests as well as identifying sample gaps and other sampling issues.
+
+<<echo=TRUE>>=
+# Create the report
+sampReport(Majors, DATES="DATES", STAID="STAID", file="MajorIonSampling")
+@
+
+The call to \texttt{sampReport} returns the file name invisibly (MajorIonSampling.pdf). Because it is a full-size portrait PDF file, it is inserted here with compressed pages. The report gives the actual begin and end dates for sampling and the graph shows the sampling dates for each station. It is easy to see that 5 stations (07233500, 07299200, 07299540, 07336800, and 07346045) were not sampled for the entire retrieval period. 
+\includepdf[pages={-}]{MajorIonSampling.pdf}
+
+\section{Set up the Project}
+
+The user must balance the need to include as many stations as possible and the targeted time frame for the trend estimation. For these data, 5 stations have incomplete record, but to include all of those stations, the analysis period would need to be much shorter, though water year 1978. This example will use the full retrieval period.
+
+The \texttt(setProj) function sets up the trend estimation project. There are many arguments to \texttt(setProj), see the documentation for details. The constituent names or response variable names are referred to as \texttt{Snames} in keeping with the names used in the original ESTREND.
+
+After projects have been set up, the user can get a list of the projects by using \texttt{lsProj} or can specify a project to use with \texttt{useProj}. The function \texttt{useProj} must be used to continue working on a project after the user quits from the R session.
+
+<<echo=TRUE>>=
+# Set up the project
+setProj("majors", Majors, STAID="STAID", DATES="DATES", 
+        Snames=c("Calcium", "Chloride"), FLOW="FLOW", 
+        type="seasonal", Start="1968-10-01", End="1989-10-01")
+@
+
+The \texttt(setProj) function creates a folder in the users workspace with that name. That folder contains \texttt{R} data that are updated after each successful call to an analysis function in \texttt{restrend}. Table 1 describes the data created in this example's call to \texttt(setProj). Any object of class "matrix" or "by" are indexed by station and sname. 
+
+\textbf{Table 1.} The data created by \texttt(setProj).
+\begin{tabular}{l l p{8cm}}
+Name & Class & Description \\
+estrend.cl & list & A record of the calls to analysis functions. \\
+estrend.cn & matrix & A description of the censoring. May be "none," "left," or "multiple." \\
+estrend.cp & matrix & The percent of observations that are left-censored. \\
+estrend.df & by & The dataset, contains STAID, DATES, FLOW, and the response variable. \\
+estrend.in & list & Information about the project, such as the start and end dates and the names of columns in each dataset. \\
+estrend.sl & by & Details from the seasonal selection process. Each is a list from the potential comparisons from 12, 6, 4, and 3 seasons per year definition. See Lorenz (2014) for details. \\
+estrend.ss & matrix & The "best" seasonal definition from the analysis recorded in \texttt{estrend.sl}. \\
+estrend.st & matrix & The status for each station and sname. Must be "OK" to continue with the trend analysis. \\
+\end{tabular}
+
+It is useful to verify which stations and snames will be analyzed and what the seasonal definitions are. The user need only enter the name of the R data object in the console. For these data, the seasonal definition is 0 in all cases where the status is not "OK."
+
+<<echo=TRUE>>=
+# Which are OK?
+estrend.st
+# What seasonal definition?
+estrend.ss
+@
+
+\eject
+\section{Flow Adjustment}
+Computing flow-adjusted concentrations (flow adjustment) is an optional step in seasonal Kendall trend analysis. It is only appropriate for uncensored or slightly censored data. If the data are censored, the censoring is ignored and the values are taken as the detection limit. Flow adjustment is performed using the \texttt{flowAdjust} function and can immediately follow the call to \texttt{setProj}.
+
+By default, all stations and snames are flow adjusted by \texttt{flowAdjust}. But specific combinations can be separately adjusted, using a different span for the LOWESS procedure for example, or if no satisfactory fit can be found, selected combinations can be completely undone by the \texttt{undoFA} function. Note that no relation between flow and concentration is not necessarily an unsatisfactory fit.
+
+The \texttt{flowAdjust} function creates a PDF report, and returns the name of the report. The report shows graphs of flow and concentration by station on each page. Up to 6 combinations are shown on a page. For any seasonal Kendall trend test with flow adjustment, the user should review all flow-concentration relation. Only 2 pages are shown in this example, the first illustrates an acceptable fit and the second a marginal fit. The user may choose to revise other flow adjustments or accept all flow adjustments, but those for station 07331600 were selected to demonstrate customized flow adjustment.
+
+<<echo=TRUE>>=
+# Do the flow adjustment accepting all defaults
+flowAdjust()
+@
+\includepdf[pages={1,7}]{majors_fa.pdf}
+
+The revised fit shows an improved, more smooth fit to the data.
+
+<<echo=TRUE>>=
+# Do the flow adjustment accepting all defaults
+flowAdjust(Station="07331600", Snames=c("Calcium", "Chloride"), span=1)
+@
+\includepdf[pages={1}]{majors_fa_01.pdf}
+
+\section{Seasonal Kendall Trend Test}
+
+After the optional flow-adjustment, these data are ready for the seasonal Kendall trend test. The function \texttt{SKTrends} executes the trend test on all valid combinations of stations and snames. It can also execute the test on subsets if some changes need to be made. An important argument is \texttt{nseas}, which can be used to force all analyses to use the same seasonal definition. This is essential for the regional seasonal Kendall test and an important consideration for other regional assessments because it levels the playing field for determining significant trends.
+
+The \texttt{SKTrends} function also creates a PDF file that contains the result of the analysis and a series graph on each page. See the documentation for \texttt{seriesPlot} for information about that graph. The file reports the results for each sname by station with the flow-adjusted results following the untransformed results. Most trends are very small for these data; only the reports for Calcium at 07228000 is shown.
+
+<<echo=TRUE>>=
+# Trend tests, accepting default seasons
+SKTrends()
+@
+\includepdf[pages={5}]{majors_sk.pdf}
+
+\section{Trend Results}
+
+When completed, or to check on intermediate results, the estimated trends can be extracted using the \texttt{getTrends} function. By default, all stations and snames are extracted. The output dataset is explained in the documentation for \texttt{getTrends}. The user has the option to set a significance level to determine whether there is a significant trend, the default level is 0.05.
+
+<<echo=TRUE>>=
+# get the trends
+majors.tnd <- getTrends()
+print(majors.tnd)
+@
+
+\eject
+\section{Further Remarks}
+
+Because trend analysis is not necessarily a straightforward process, but requires user assessments at several points in the process, it is not necessarily a good idea to simply create scripts and run them without any user interaction. To overcome recording the steps in a script, the functions in restrend record all changes to the projects data in a list called \texttt{estrend.cl}. It can be viewed at any time simply by entering estrend.cl in the console window. It can be saved with the data to ensure that the trend analysis is reproducible.
+
+<<echo=TRUE>>=
+# get the history
+estrend.cl
+@
+
+\begin{thebibliography}{9}
+
+\bibitem{Lor}
+Lorenz, D.L., in preparation, restrend: U.S. Geological Survey Open File Report, ? p.
+
+\bibitem{SAO}
+Schertz, T.L., Alexander, R.B., and Ohe, D.J., 1991, The computer program EStimate TREND (ESTREND), a system for the detection of trends in water-quality data: U.S. Geological Survey Water Resources Investigations Report 91-4040, 72 p. 
+
+\end{thebibliography}
+
+\end{document}

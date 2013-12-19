@@ -1,0 +1,17 @@
+\name{lsProj}
+\alias{lsProj}
+\title{List ESTREND Projects}
+\usage{
+  lsProj()
+}
+\value{
+  The names of valid projects are returned. If a project is
+  in use, then it is labeled "in use," otherwise the most
+  recently used project is labeled "recent" if that can be
+  determined.
+}
+\description{
+  List the ESTREND projects that have been set up in the
+  current workspace.
+}
+

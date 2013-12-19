@@ -1,0 +1,88 @@
+\name{setProj}
+\alias{setProj}
+\title{Set Up an ESTREND Project}
+\usage{
+  setProj(project, data, STAID, DATES, Snames, FLOW = NULL,
+    Covars = NULL, type = "seasonal", Start = NULL,
+    End = NULL, tol = NULL, min.obs = 20)
+}
+\arguments{
+  \item{project}{the name of the project to set up. The
+  project name is forced to all lower case.}
+
+  \item{data}{the dataset to use in for the project.}
+
+  \item{STAID}{the name of the column in \code{data} that
+  contains the station identifiers. The data are forced to
+  character for the analysis.}
+
+  \item{DATES}{the name of the column in \code{data}
+  containing the sample dates. This column must be class
+  "Date" for seasonal analyses, but can be numeric or
+  integer for annual analyses.}
+
+  \item{Snames}{the name of the columns in \code{data}
+  containing the sample data for trend analysis.}
+
+  \item{FLOW}{the name of the column in \code{data}
+  containing the streamflow for each sample.}
+
+  \item{Covars}{the name of the columns in \code{data}
+  containing any covariate data for trend analysis.}
+
+  \item{type}{the kind of analysis. Must be "seasonal,"
+  "tobit," or "annual." Only the fist letter is necessary.
+  See \bold{Details}.}
+
+  \item{Start}{the starting date for the analysis. For
+  seasonal analyses, must be "Date" or a character string
+  the represents a date. For annual analyses, must match
+  the type of \code{DATES}. See \bold{Details}.}
+
+  \item{End}{the ending date for the analysis. For seasonal
+  analyses, must be "Date" or a character string the
+  represents a date. For annual analyses, must match the
+  type of \code{DATES}. To guarantee that the periods are
+  set up correctly, \code{End} should be the first day of
+  the month following the actual last day.}
+
+  \item{tol}{the tolerance for the samples dates. To be
+  included in a regular analysis, the first sample within
+  the \code{Start} to \code{End} time period must be within
+  \code{tol} and likewise for the last sample. if
+  \code{tol} is \code{NULL}, then it is set to 5 percent of
+  the time frame, excpt for annual series analysis when it
+  is set to 1 year.}
+
+  \item{min.obs}{the minimum number of observations
+  required for a trend analysis.}
+}
+\value{
+  The name of the project is returned.
+}
+\description{
+  Define the data and other characteristics of an ESTREND
+  project.
+}
+\details{
+  If \code{Start} and \code{End} are \code{NULL}, then a
+  ragged analysis is set up, and each variable set up for
+  each station is analyzed on the available data.
+  Otherwise, the analysis is regular and will be restricted
+  to the time frame specified by \code{Start} and
+  \code{End}.
+
+  If \code{type} is "seasonal," then the data are processed
+  for a seasonal Kendall type of analysis---seasons are
+  defined (12, 6, 4, and 3 per year) and evaluated to
+  select the "best" number of seasons. If \code{type} is
+  "tobit" or "annual," then no seasonal analysis is done
+  because the data are ready for analysis. If \code{type}
+  is "annual," then the data must be uncensored.
+}
+\note{
+  A directory is created using the name of the project is
+  created in the user's directory. It contains the objects
+  created by restrend as R workspaces.
+}
+

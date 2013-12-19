@@ -1,0 +1,151 @@
+\documentclass{article}
+\parskip 3pt
+\usepackage{pdfpages}
+%\VignetteIndexEntry{Trends in Metals}
+%\VignetteDepends{restrend}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\raggedright
+\parindent 30 pt
+
+\title{Trend Analysis of Censored Metals}
+
+\author{Dave Lorenz}
+
+\maketitle
+
+This example illustrates the data manipulations for the Tobit analysis of uncensored data. Metals are often left-censored in natural waters and provide a useful example. This example also uses a common time frame for all of the trend tests. The common time frame facilitates comparing trends among the stations. Most often users will want to divide trend analyses into similar groups of analytes like metals, major ions, nutrients, and so forth because they will be analyzed in similar ways and will have common sampling time frames.
+
+The data used in this application are a small subset of the data used by Schertz and others (1991). The data are samples taken from water year 1969 (October, 1968) through water year 1989 (September, 1989). Nineteen stations were selected and only copper and iron were selected for the metals.
+
+<<echo=TRUE>>=
+# Load the restrend package and the data
+library(restrend)
+data(EstrendSub)
+head(EstrendSub)
+@
+
+\eject
+\section{Summarize the Sample Data}
+
+In general, it is desirable, but not necessary, to subset the data before proceeding with the analysis of a subset of the constituents. Before these data are subsetted, the FLOW column must be created. The flow data are in two columns \texttt{QI}, the flow at the time of the sample; and \texttt{QD}, the mean flow on the day of the sample. The \texttt{coalesce} function in the \texttt{USGSwsBase} package can used to select the non-missing value for flow. 
+
+For censored data, which includes left- and multiply-cenosred data, the response variable must be converted to class "qw." The use of this class facilitates censored data analysis. The \texttt{convert2qw} function in the \texttt{USGSwsQW} package can be used to convert these data. The conversion requires at least 2 columns, one for the value and one for the remark code. For these data, columns beginning with "P" contain the value and columns beginning with "R" contain the remark code; the matching suffixes define the pair. This naming scheme is known as the Booker convention. Note that USGS data retrieved using the \texttt{importQW} function have much more meta information and do not need conversion.
+
+<<echo=TRUE>>=
+# Compute FLOW.
+EstrendSub <- transform(EstrendSub, FLOW=coalesce(QI, QD))
+# Convert, the default scheme is "booker"
+EstrendSub.qw <- convert2qw(EstrendSub)
+# Create the subset, the Pcolumn name is preserved
+Metals <- subset(EstrendSub.qw, select=c("STAID", "DATES", "FLOW", 
+                                         "PIron", "PCopper"))
+# Rename metals to remove the leading P
+names(Metals)[4:5] <- c("Iron", "Copper")
+# Show the first few rows of the data
+head(Metals)
+@
+
+The \texttt{sampReport} function creates a simple PDF file that contains a report of the sample date ranges and graph of samples for each site. It can be used to help define the starting and ending date ranges for the trend tests as well as identifying sample gaps and other sampling issues. However, \texttt{sampReport} only reports the dates in the data set, it does not know about any missing samples. To get an accurate count of the samples, missing values across all metal columns need to be removed. The \texttt{na.omit} function cannot be used becuase it would remove rows where there were any missing values.
+
+<<echo=TRUE>>=
+# Subset the data and show first few lines
+Metals <- subset(Metals, !(is.na(Iron) & is.na(Copper)))
+head(Metals)
+# Create the report
+sampReport(Metals, DATES="DATES", STAID="STAID", file="MetalsSampling")
+@
+
+The call to \texttt{sampReport} returns the file name invisibly (MetalsSampling.pdf). Because it is a full-size portrait PDF file, it is inserted here with compressed pages. The report gives the actual begin and end dates for sampling and the graph shows the sampling dates for each station. It is easy to see that only 14 stations were sampled for metals within the analysis period and the actual sampling at each station varied widely. 
+\includepdf[pages={-}]{MetalsSampling.pdf}
+
+\section{Set up the Project}
+
+The user must balance the need to include as many stations as possible and the targeted time frame for the trend estimation. For these data, 4 stations have complete record beginning in October, 1970, but 3 additional stations have complete records beginning in October, 1974. This example will use the analysis period beginning in October, 1974 and ending in September, 1989.
+
+The \texttt{setProj} function sets up the trend estimation project. There are many arguments to \texttt{setProj}, see the documentation for details. The constituent names or response variable names are referred to as \texttt{Snames} in keeping with the names used in the original ESTREND.
+
+After projects have been set up, the user can get a list of the projects by using \texttt{lsProj} or can specify a project to use with \texttt{useProj}. The function \texttt{useProj} must be used to continue working on a project after the user quits from the R session.
+
+<<echo=TRUE>>=
+# Set up the project
+setProj("metals", Metals, STAID="STAID", DATES="DATES", 
+        Snames=c("Iron", "Copper"), FLOW="FLOW", 
+        type="tobit", Start="1974-10-01", End="1989-10-01")
+@
+
+The \texttt{setProj} function creates a folder in the users workspace with that name. That folder contains \texttt{R} data that are updated after each successful call to an analysis function in \texttt{restrend}. Table 1 describes the data created in this example's call to \texttt{setProj}. Any object of class "matrix" or "by" are indexed by station and sname. 
+
+\textbf{Table 1.} The data created by \texttt{setProj}.
+\begin{tabular}{l l p{8cm}}
+Name & Class & Description \\
+estrend.cl & list & A record of the calls to analysis functions. \\
+estrend.cn & matrix & A description of the censoring. May be "none," "left," or "multiple." \\
+estrend.cp & matrix & The percent of observations that are left-censored. \\
+estrend.df & by & The dataset, contains STAID, DATES, FLOW, and the response variable. \\
+estrend.in & list & Information about the project, such as the start and end dates and the names of columns in each dataset. \\
+estrend.st & matrix & The status for each station and sname. Must be "OK" to continue with the trend analysis. \\
+\end{tabular}
+
+It is useful to verify which stations and snames will be analyzed. The user need only enter the name of the R data object in the console. The stations listed as "OK" matches what we expect from the sample report.
+
+<<echo=TRUE>>=
+# Which are OK?
+estrend.st
+@
+
+\eject
+\section{Tobit Trend Test}
+
+These data are now ready for the Tobit trend test. The function \texttt{tobitTrends} executes the trend test on all valid combinations of stations and snames. It can also execute the test on subsets if some changes need to be made. By default, the data are log-transformed and flow (also log-transformed) and first-order Fourier terms for seasonality are included in the regression analysis. The variable the describe the annual trend is called .Dectime and is always the last variable in the report.
+
+The \texttt{tobitTrends} function also creates a PDF file that contains the result of the analysis and diagnostic graphs on each page. Most trends are very small for these data; only the report for Iron at 07346070 is shown. That is the only trend significant at the 0.05 level. The partial residual plot of trend shows some nonlinearity, but the reported slope is a good estimate of the average trned over the analysis period.
+
+<<echo=TRUE>>=
+# Trend tests, accepting default
+tobitTrends()
+@
+\includepdf[pages={13}]{metals_tb.pdf}
+
+The diagnostic plots should be reviewed for verify the basic assumptions of linear regression--linearity of fit, uniformity of residuals, and normality of residuals. Note that the linearity and uniformity of residuals can be deceptive in the residuals vs. fit graph becuase of discrete values and censoring.
+
+A more complete suite of diagnostic plots can be obtained using the \texttt{plotTT} function. For this example, there appears to be a highly influential observation in the analysis for Iron at station 07297910. The diagnostic plots reveal nothing unusual, except that it occurs very early in the record and at the largest flow.
+
+<<echo=TRUE>>=
+# Trend tests, accepting default
+plotTT(Station="07297910", Sname="Iron", device="pdf")
+@
+\includepdf[pages={-}]{X07297910_Iron.pdf}
+
+\section{Trend Results}
+
+When completed, or to check on intermediate results, the estimated trends can be extracted using the \texttt{getTrends} function. By default, all stations and snames are extracted. The output dataset is explained in the documentation for \texttt{getTrends}. The user has the option to set a significance level to determine whether there is a significant trend, the default level is 0.05.
+
+<<echo=TRUE>>=
+# get the trends
+metals.tnd <- getTrends()
+print(metals.tnd)
+@
+
+\eject
+\section{Further Remarks}
+
+Because trend analysis is not necessarily a straightforward process, but requires user assessments at several points in the process, it is not necessarily a good idea to simply create scripts and run them without any user interaction. To overcome recording the steps in a script, the functions in restrend record all changes to the projects data in a list called \texttt{estrend.cl}. It can be viewed at any time simply by entering estrend.cl in the console window. It can be saved with the data to ensure that the trend analysis is reproducible.
+
+<<echo=TRUE>>=
+# get the history
+estrend.cl
+@
+
+\begin{thebibliography}{9}
+
+\bibitem{Lor}
+Lorenz, D.L., in preparation, restrend: U.S. Geological Survey Open File Report, ? p.
+
+\bibitem{SAO}
+Schertz, T.L., Alexander, R.B., and Ohe, D.J., 1991, The computer program EStimate TREND (ESTREND), a system for the detection of trends in water-quality data: U.S. Geological Survey Water Resources Investigations Report 91-4040, 72 p. 
+
+\end{thebibliography}
+
+\end{document}

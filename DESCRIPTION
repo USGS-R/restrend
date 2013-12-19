@@ -1,0 +1,39 @@
+Package: restrend
+Type: Package
+Title: ESTimate TRENDs
+Version: 0.2
+Date: 2013-10-28
+Author: Dave Lorenz
+Maintainer: Dave Lorenz <lorenz@usgs.gov>
+Description: Collection of functions to estimate linear or monotonic trends in
+    hydrologic data.
+License: File LICENSE
+Depends:
+    R (>= 3.0.0),
+    g.data,
+    USGSwsBase,
+    USGSwsGraphs,
+    USGSwsStats,
+    USGSwsQW
+LazyLoad: yes
+LazyData: yes
+Collate:
+    'censSeaken.R'
+    'ckProj.R'
+    'estrendSeasonTable.R'
+    'flowAdjust.R'
+    'sampReport.R'
+    'setProj.R'
+    'SKTrends.R'
+    'sumSamp.R'
+    'undoFA.R'
+    'useProj.R'
+    'plotTT.R'
+    'tobitTrends.R'
+    'getTrends.R'
+    'annualTrends.R'
+    'lsProj.R'
+    'plotTrends.R'
+    'regionalSeaken.R'
+    'print.rsktest.R'
+    'restrend-package.R'
