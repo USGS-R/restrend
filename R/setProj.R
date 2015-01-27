@@ -24,7 +24,8 @@
 #'sample dates. This column must be class "Date" for seasonal analyses,
 #'but can be numeric or integer for annual analyses.
 #' @param Snames the name of the columns in \code{data} containing the 
-#'sample data for trend analysis.
+#'sample data for trend analysis. These must be of class "numeric,"
+#'"integer," "lcens," or "qw."
 #' @param FLOW the name of the column in \code{data} containing the 
 #'streamflow for each sample.
 #' @param Covars the name of the columns in \code{data} containing any 
@@ -44,7 +45,7 @@
 #'regular analysis, the first sample within the \code{Start} to 
 #'\code{End} time period must be within \code{tol} and likewise for the
 #'last sample. if \code{tol} is \code{NULL}, then it is set to 5 percent
-#'of the time frame, excpt for annual series analysis when it is set to
+#'of the time frame, except for annual series analysis when it is set to
 #'1 year.
 #' @param min.obs the minimum number of observations required for a 
 #'trend analysis.
@@ -82,8 +83,15 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 		## Fix to allow End to be the end of the data for annual analysis.
 		if(type == "annual" && !isDateLike(data[[DATES]])) {
 			data <- data[data[[DATES]] >= Start & data[[DATES]] <= End, ]
-		} else 
+		} else {
+			## Check for consistent begin/end when "seasonal"
+			if(type == "seasonal") {
+				if(month(as.POSIXlt(Start)) != month(as.POSIXlt(End)) ||
+					 	day(as.POSIXlt(Start)) != day(as.POSIXlt(End)))
+					stop("The Start and End day and month must agree for seasonal analyses")
+			}
 			data <- data[data[[DATES]] >= Start & data[[DATES]] < End, ]
+		}
 		analysis <- "regular"
 		if(is.null(tol)) {
 			if(is.character(Start))
@@ -125,10 +133,10 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 			} else if(nrow(temp.df) < min.obs) {
 				estrend.st[station, col] <- "too few data"
 				estrend.cn[station, col] <- censoring(temp.df[[col]])
-			} else if(max(temp.df[[DATES]]) < End - tol) {
+			} else if(analysis == "regular" && max(temp.df[[DATES]]) < End - tol) {
 				estrend.st[station, col] <- "short record"
 				estrend.cn[station, col] <- censoring(temp.df[[col]])
-			} else if(min(temp.df[[DATES]]) > Start + tol) {
+			} else if(analysis == "regular" && min(temp.df[[DATES]]) > Start + tol) {
 				estrend.st[station, col] <- "short record"
 				estrend.cn[station, col] <- censoring(temp.df[[col]])
 			} else {

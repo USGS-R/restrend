@@ -36,7 +36,7 @@ In general, it is desirable, but not necessary, to subset the data before procee
 EstrendSub <- transform(EstrendSub, FLOW=coalesce(QI, QD))
 # Create the subset
 Majors <- subset(EstrendSub, select=c("STAID", "DATES", "FLOW", 
-																			"Calcium", "Chloride"))
+	"Calcium", "Chloride"))
 @
 
 The \texttt{sampReport} function creates a simple PDF file that contains a report of the sample date ranges and graph of samples for each site. It can be used to help define the starting and ending date ranges for the trend tests as well as identifying sample gaps and other sampling issues.

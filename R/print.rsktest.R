@@ -13,7 +13,7 @@
 #'p-value corected for serial and spatial correlation also includes the
 #'adjustment describe in Sprague and others.
 #' @method print rsktest
-#' @S3method print rsktest
+#' @export
 print.rsktest <- function(x, digits=4, ...) {
   ## Coding history:
   ##    2013Oct26 DLLorenz Original Coding

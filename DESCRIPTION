@@ -17,23 +17,3 @@ Depends:
     USGSwsQW
 LazyLoad: yes
 LazyData: yes
-Collate:
-    'censSeaken.R'
-    'ckProj.R'
-    'estrendSeasonTable.R'
-    'flowAdjust.R'
-    'sampReport.R'
-    'setProj.R'
-    'SKTrends.R'
-    'sumSamp.R'
-    'undoFA.R'
-    'useProj.R'
-    'plotTT.R'
-    'tobitTrends.R'
-    'getTrends.R'
-    'annualTrends.R'
-    'lsProj.R'
-    'plotTrends.R'
-    'regionalSeaken.R'
-    'print.rsktest.R'
-    'restrend-package.R'

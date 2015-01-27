@@ -131,11 +131,10 @@ tobitTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 				setGraph(5, AA.lo)
 				plot(TBx, which=".Dectime", set.up=FALSE)
 				## The partial fit for flow if possible
-				setGraph(6, AA.lo)
 				if(FlowLog) {
+					setGraph(6, AA.lo)
 					plot(TBx, which=FlowExp, set.up=FALSE)
-				} else
-					plot.new()
+				}
 				estrend.tb[station, sname][[1L]] <- list(TB=TB) # Pack it up
 			}
 		}
