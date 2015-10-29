@@ -95,7 +95,15 @@ flowAdjust <- function(Stations="All", Snames="All", use.logs=TRUE,
 					Cens.pct <- c(Cens.pct, ckc <- estrend.cp[station, sname])
 				}
 				if(ckc <= max.cens) {
-					AA.pl <- xyPlot(temp.df[[FLOW]], as.double(temp.df[[sname]]),
+					Q <- temp.df[[FLOW]]
+					Cn <- as.double(temp.df[[sname]])
+					# Protect against 0s if log
+					if(use.logs) {
+						pick <- (Q > 0) & (Cn > 0)
+						Q <- Q[pick]
+						Cn <- Cn[pick]
+					}
+					AA.pl <- xyPlot(Q, Cn,
 													Plot=list(size=0.05),
 													xaxis.log=use.logs, yaxis.log=use.logs,
 													xtitle="Streamflow", ytitle=sname,
@@ -105,9 +113,9 @@ flowAdjust <- function(Stations="All", Snames="All", use.logs=TRUE,
 					## Now compute the FACs
 					Fits <- interpLine(AA.pl, yfromx=temp.df[[FLOW]])
 					if(use.logs) {
-						FAC <- log(temp.df[[sname]]) - log(Fits)
+						FAC <- log(as.numeric(temp.df[[sname]])) - log(Fits)
 					} else
-						FAC <- temp.df[[sname]] - Fits
+						FAC <- as.numeric(temp.df[[sname]]) - Fits
 					temp.df$FAC <- FAC
 					estrend.df[station, sname][[1L]] <- temp.df
 					estrend.fa[station, sname][[1L]] <- c(span, use.logs)

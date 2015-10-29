@@ -11,9 +11,5 @@ Although this software program has been used by the U.S. Geological Survey (USGS
 
 This software is provided "AS IS."
 
-Installation
-----------
-
-    install.packages(c("restrend"), 
-    repos=c("http://usgs-r.github.com","http://cran.us.r-project.org"), 
-    dependencies=TRUE)
+Warning, bugs that affect graphics have been identified. We recommend not installing and not using restrend until the full effects of the bugs have been 
+identified and fixed.
