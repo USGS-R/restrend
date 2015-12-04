@@ -11,6 +11,10 @@
 #' If \code{type} is "seasonal," then the data are processed for a 
 #'seasonal Kendall type of analysis---seasons are defined (12, 6, 4, 
 #'and 3 per year) and evaluated to select the "best" number of seasons.
+#'If, \code{type} is "monthly," then the data are processed for a
+#'seasonal Kendall type of analysis---seasons defined as months, but
+#'the number of seasons is set by the months during which sampling occured.
+#'There must be at least 1/2 of possible samples in a month to be included.
 #'If \code{type} is "tobit" or "annual," then no seasonal analysis is
 #'done because the data are ready for analysis. If \code{type} is
 #'"annual," then the data must be uncensored.
@@ -30,8 +34,8 @@
 #'streamflow for each sample.
 #' @param Covars the name of the columns in \code{data} containing any 
 #'covariate data for trend analysis.
-#' @param type the kind of analysis. Must be "seasonal," "tobit," or
-#'"annual." Only the fist letter is necessary. See \bold{Details}.
+#' @param type the kind of analysis. Must be "seasonal," "tobit," 
+#'"annual," or "monthly." Only the fist letter is necessary. See \bold{Details}.
 #' @param Start the starting date for the analysis. For seasonal analyses,
 #'must be "Date" or a character string the represents a date. For
 #'annual analyses, must match the type of \code{DATES}. 
@@ -65,7 +69,7 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 	project <- tolower(project)
 	if(file.exists(project))
 		stop("A directory or file named ", project, 
-				 " exists in the user's directory.")
+				 " exists in the working directory.")
 	## Check search path for a current project to detach it
 	if(exists("._Proj", where=1L)) {
 		cur <- get("._Proj", pos=1L)
@@ -76,6 +80,7 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 	g.data.attach(project, warn=FALSE)
 	on.exit(detach(2)) # If error, trap false creation
 	## Trim dataset if necessary
+	type <- match.arg(type, c("seasonal", "annual", "tobit", "monthly"))
 	analysis <- "ragged"
 	if(!is.null(c(Start, End))) { # Both not null
 		if(is.null(Start) || is.null(End)) 
@@ -84,11 +89,13 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 		if(type == "annual" && !isDateLike(data[[DATES]])) {
 			data <- data[data[[DATES]] >= Start & data[[DATES]] <= End, ]
 		} else {
-			## Check for consistent begin/end when "seasonal"
-			if(type == "seasonal") {
+			## Check for consistent begin/end when "seasonal" or "monthly"
+			if(type %in% c("seasonal", "monthly")) {
 				if(month(as.POSIXlt(Start)) != month(as.POSIXlt(End)) ||
 					 	day(as.POSIXlt(Start)) != day(as.POSIXlt(End)))
-					stop("The Start and End day and month must agree for seasonal analyses")
+					stop("The Start and End day and month must agree for seasonal/monthly analyses")
+				if(type == "monthly" && day(as.POSIXlt(Start)) != 1)
+					stop("The day must be 1 for monthly analyses")
 			}
 			data <- data[data[[DATES]] >= Start & data[[DATES]] < End, ]
 		}
@@ -124,9 +131,9 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 	estrend.cn <- estrend.st # Just copy
 	estrend.cp <- matrix(0, nrow=length(stations), ncol=length(Snames),
 											 dimnames=list(stations=stations, snames=Snames))
-	for(station in stations)
+	for(station in stations) {
 		for(col in Snames) {
-			temp.df <- estrend.df[station, col][[1]]
+			temp.df <- estrend.df[station, col][[1L]]
 			if(nrow(temp.df) == 0) {
 				estrend.st[station, col] <- "no data"
 				estrend.cn[station, col] <- "none"
@@ -147,8 +154,8 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 			if(estrend.cn[station, col] != "none")
 				estrend.cp[station, col] <- pctCens(temp.df[[col]])
 		}
+	}
 	## And the analysis info
-	type=match.arg(type, c("seasonal", "tobit", "annual"))
 	estrend.in <- list(stations=stations, snames=Snames,
 										 analysis=analysis, type=type,
 										 Start=Start, End=End, DATES=DATES,
@@ -167,7 +174,7 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 												 dimnames=list(stations=stations, snames=Snames))
 		for(station in stations)
 			for(col in Snames) {
-				temp.df <- estrend.df[station, col][[1]]
+				temp.df <- estrend.df[station, col][[1L]]
 				if(estrend.st[station, col] == "OK") {
 					if(analysis == "regular") {
 						ssn12 <- regularSeries(seq(nrow(temp.df)), 
@@ -181,14 +188,43 @@ setProj <- function(project, data, STAID, DATES, Snames, FLOW=NULL,
 							ssn12 <- c(ssn12, rep(NA_real_, 12L - ck12))
 					}
 					temp.l <- estrendSeasonTable(ssn12)
-					estrend.sl[station, col][[1]] <- temp.l
-					estrend.ss[station, col][[1]] <- temp.l$best
+					estrend.sl[station, col][[1L]] <- temp.l
+					estrend.ss[station, col] <- temp.l$best
 				}
 			}
 		## Save the results
 		assign("estrend.sl", estrend.sl, 2)
 		assign("estrend.ss", estrend.ss, 2)
-	}
+	} else if(type == "monthly") {
+		## Season listing and season select
+		estrend.ml <- by(estrend.by, estrend.by, function(x) list())
+		estrend.ms <- matrix(0, nrow=length(stations), ncol=length(Snames),
+												 dimnames=list(stations=stations, snames=Snames))
+		for(station in stations)
+			for(col in Snames) {
+				temp.df <- estrend.df[station, col][[1L]]
+				## ssn12 is the index of the observation for the period
+				if(estrend.st[station, col] == "OK") {
+					if(analysis == "regular") {
+						ssn12 <- regularSeries(seq(nrow(temp.df)), 
+																	 temp.df[[DATES]], 
+																	 begin=Start,
+																	 end=End, k.period=1)$Value
+					} else {
+						ssn12 <- regularSeries(seq(nrow(temp.df)), 
+																	 temp.df[[DATES]], k.period=1)$Value
+						if(ck12 <- (length(ssn12) %/% 12) > 0)
+							ssn12 <- c(ssn12, rep(NA_real_, 12L - ck12))
+					}
+					temp.l <- estrendMonthTable(ssn12)
+					estrend.ml[station, col][[1L]] <- temp.l
+					estrend.ms[station, col] <- temp.l$nmons
+				}
+			}
+		## Save the results
+		assign("estrend.ml", estrend.ml, 2)
+		assign("estrend.ms", estrend.ms, 2)
+	}	
 	# Preserve a history of this project.
 	assign("estrend.cl", list(Call), 2) 
 	g.data.save()

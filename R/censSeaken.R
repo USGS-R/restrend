@@ -6,7 +6,8 @@
 #' @param series any regularly spaced object that can be forced to 
 #'class "lcens" to test for trend. Missing values are permitted.
 #' @param nseas the number of seasons per year.
-#' @return An object of class "htest" containing the following components: 
+#' @return An object of class "htest" also inhereting class "seaken" 
+#' containing the following components: 
 #'  \item{method}{a description of the method.}
 #'  \item{statistic}{the value of Kendall's tau.}
 #'  \item{p.value}{the p-value. See \bold{Note}.}
@@ -22,8 +23,32 @@
 #'  \item{alternative}{a character string describing alternative to the
 #'test ("two.sided").}
 #'  \item{null.value}{the value for the hypothesized slope (0).}
+#'  \item{nyears}{the number of years.}
+#'  \item{nseasons}{the number of seasons.}
+#'  \item{series}{the data that was analyzed converted to numeric values.}
 #' @note The value of \code{p.value} is \code{p.value.raw} if there are 
 #'fewer than 10 years of data and is \code{p.value.corrected} otherwise.
+#' @references The approach used in \code{censSeaken} was used ooriginally in Sullivan 
+#'and others (2009). The original version of the code was published in Lorenz 
+#'and others (2011). It is based on principles for comparing censored values
+#'in Helsel (2012) and the Turnbull slope estiamte is described by Turnbul(1974).
+#'
+#'Helsel, D.R. 2012, Statistics for censored environmental data 
+#'using Minitab and R: New York, Wiley, 324 p.\cr
+#'Lorenz, D.L., Ahearn, E.A., Carter, J.M., Cohn, T.A., Danchuk, W.J., 
+#'Frey, J.W., Helsel, D.R., Lee, K.E., Leeth, D.C., Martin, J.D., 
+#'McGuire, V.L., Neitzert, K.M., Robertson, D.M., Slack, J.R., Starn, J., 
+#'Vecchia, A.V., Wilkison, D.H., and Williamson, J.E., 2011, 
+#'USGS library for S-PLUS for Windows---Release 4.0: U.S. Geological 
+#'Survey Open-File Report 2011-1130. 
+#'(Available at \url{http://pubs.er.usgs.gov/publication/ofr20111130}).\cr
+#'Sullivan, D.J., Vecchia, A.V., Lorenz, D.L., Gilliom, R.J., and 
+#'Martin, J.D., 2009, Trends in pesticide concentrations in corn-belt streams,
+#'1996???-2006: U.S. Geological Survey Scientific Investigations Report 
+#'2009-5132, 75 p.\cr
+#'Turnbull, B.W., 1974, Nonparametric estimation of a survivorship function 
+#'with doubly censored data: Journal of the American Statistical Society, 
+#'v. 69, p. 169--173.
 #' @examples
 #'\dontrun{
 #'# Compare censored and uncensored to seaken
@@ -152,9 +177,17 @@ censSeaken <- function(series, nseas=12) {
     p.value <- p.val
   else
     p.value <- p.val.c
+	# Modify series to be numeric, needed for plotting 
+	# mostly for compatibility with seaken!
+	# Find the smallest integer value less than the smallest value
+	# and set the simple substitution value to that
+	minser <- min(series@.Data[,1L], na.rm=TRUE)
+	offset <- (minser - trunc(minser - 0.0001))/2
+	series <- ifelse(series@censor.codes, series@.Data[,1L] - offset,
+									 series@.Data[,1L])
   retval <- list(method=method,  
   							 data.name=paste(sernam, " (",nyrs, " years and ", nseas, " seasons)", sep=""),
-                 nyears=nyrs, nseasons=nseas, series=as.double(series),
+                 nyears=nyrs, nseasons=nseas, series=series,
                  statistic=tau, p.value=p.value,
                  p.value.raw=p.val,
                  p.value.corrected=p.val.c,

@@ -3,32 +3,77 @@
 #' Perform the seasonal Kendall trend test.
 #' 
 #' @param Stations a vector of the the station identifiers on which 
-#'to do the flow adjustment.
+#'to do the trend test.
 #' @param Snames a vector of the response variables on which to do 
-#'the flow adjustment.
-#' @param use.logs log transform the data before the trend test, 
-#'applies only to uncensored seasonal Kendall test?
+#'the trend test.
+#' @param use.logs logical, if \code{TRUE}, then log transform the data 
+#'before the trend test, otherwise no log transform is used. Applies only 
+#'to uncensored seasonal Kendall test---the data for the censored seasonal 
+#'Kendall test is never log-transformed.
 #' @param max.cens the maximum percent censoring permitted for the
-#'uncensored seasonal Kendall test. If the percentage od censoring
+#'uncensored seasonal Kendall test. If the percentage of censoring
 #'exceeds this value, then the censored seasonal Kendall test is
 #'performed. Set to a negative value to force the censored seasonal 
 #'Kendall test for all \code{Stations} and \code{Snames}.
 #' @param nseas the number of seasons to use for all of the tests. If
 #'\code{NULL} (default), then use the selected number of seasons 
-#'defined in \code{setProj}.
-#' @param report the name of the PDF file that contains a report for 
-#'each test. The default is to use the name of the project with "_sk"
-#'appended. If the PDF file exists, then it is not overwritten, 
-#'but the name is appended with a sequence of numbers until one that
-#'is valid is created.
+#'defined in \code{setProj}. Applies only when the type of analysis
+#'is "seasonal."
+#' @param report the base name of the PDF file that contains a report for 
+#'each test; the suffix ".pdf" should not be inlcuded. The default is to 
+#'use the name of the project with "_sk" appended. If the PDF file exists, 
+#'then it is not overwritten, but the name is appended with a sequence of 
+#'numbers until one that is valid is created.
 #' @return The name of the report file.
 #' @export
 SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 											 max.cens=5, nseas=NULL, report) {
-	## Coding history:
-	##    2013Sep05 DLLorenz Original Coding
 	##
 	## Preliminaries
+	## Function to make regular series
+	mkRegSer <- function(data, sname, DATES, monthly, NumSeas, picks, 
+											 DoReg, Start, End, ckcens, FAC) {
+		orgname <- sname
+		if(ckcens) {
+			data$.ndx. <- seq(nrow(data)) # Index to censored data
+			sname <- ".ndx."
+		} else if(FAC) {
+			sname <- "FAC"
+		}
+		if(monthly) {
+			if(DoReg) {
+				RegSer <- regularSeries(as.double(data[[sname]]), 
+																data[[DATES]],
+																begin=Start,
+																end=End, 
+																k.period=1)
+			} else {
+				RegSer <- regularSeries(as.double(data[[sname]]), 
+																data[[DATES]],
+																k.period=1)
+			}
+			# select the months
+			RegSer <- RegSer[rep(picks, length.out=nrow(RegSer)),  ]
+		} else {
+			if(DoReg) {
+				RegSer <- regularSeries(as.double(data[[sname]]), 
+																data[[DATES]],
+																begin=Start,
+																end=End, 
+																k.period=12/NumSeas)
+			} else {
+				RegSer <- regularSeries(as.double(data[[sname]]), 
+																data[[DATES]],
+																k.period=12/NumSeas)
+			}
+		}
+		if(ckcens) {
+			## Replace Value with the censored data
+			RegSer$Value <- as.lcens(data[[orgname]])[RegSer$Value]
+		}
+		# No need to update FAC
+		return(RegSer)
+	}
 	pos <- ckProj()
 	Call <- match.call()
 	if(missing(report)) {
@@ -38,7 +83,7 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 	if(file.exists(report.name)) { # find one that works
 		i <- 1L
 		while(file.exists(report.name)) {
-			report.tmp <- paste(report, zeropad(i, 2), sep="_")
+			report.tmp <- paste(report, zeroPad(i, 2), sep="_")
 			report.name <- setFileType(report.tmp, type="pdf")
 			i <- i + 1L
 		}
@@ -47,12 +92,18 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 	estrend.cl <- get("estrend.cl", pos=pos)
 	estrend.in <- get("estrend.in", pos=pos)
 	## Check to verify that data were set up for SK
-	if(estrend.in$type != "seasonal")
+	if(estrend.in$type == "seasonal") {
+		estrend.ss <- get("estrend.ss", pos=pos)
+		monthly <- FALSE
+	} else 	if(estrend.in$type == "monthly") {
+		estrend.ml <- get("estrend.ml", pos=pos)
+		monthly <- TRUE
+	} else {
 		stop("The project ", get("._Proj", pos=1), 
 				 " was not set up for the seasonal Kendall trend test.")
+	}
 	estrend.df <- get("estrend.df", pos=pos)
 	estrend.st <- get("estrend.st", pos=pos)
-	estrend.ss <- get("estrend.ss", pos=pos)
 	estrend.cn <- get("estrend.cn", pos=pos)
 	estrend.cp <- get("estrend.cp", pos=pos)
 	DoFAC <- FALSE
@@ -87,22 +138,20 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 		for(sname in Snames) {
 			if(estrend.st[station, sname] == "OK") {
 				temp.df <- estrend.df[station, sname][[1L]]
-				if(is.null(nseas)) {
+				if(monthly) {
+					NumSeas <- estrend.ml[station, sname][[1]]$nmons
+					picks <- estrend.ml[station, sname][[1]]$months.pick
+				} else if(is.null(nseas)) {
 					NumSeas <- estrend.ss[station, sname]
-				} else
+					picks <- FALSE
+				} else {
 					NumSeas <- nseas
+					picks <- FALSE
+				}
 				ckc <- estrend.cp[station, sname]
-				if(ckc <= max.cens) {
-					if(DoReg) {
-						RegSer <- regularSeries(as.double(temp.df[[sname]]), 
-																		temp.df[[DATES]],
-																		begin=estrend.in$Start,
-																		end=estrend.in$End, 
-																		k.period=12/NumSeas)
-					} else
-						RegSer <- regularSeries(as.double(temp.df[[sname]]), 
-																		temp.df[[DATES]],
-																		k.period=12/NumSeas)
+				if(ckc <= max.cens) { # Uncensored and FAC if possible
+					RegSer <- mkRegSer(temp.df, sname, DATES, monthly, NumSeas, picks,
+														 DoReg, estrend.in$Start, estrend.in$End, FALSE, FALSE)
 					## Do it, finagles used to maintain names
 					names(RegSer)[4L] <- sname
 					if(use.logs) {
@@ -123,20 +172,12 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 					text(0, 1, paste(txt, collapse="\n"), family="mono", adj=c(0,1))
 					options(warn)
 					setGraph(2, AA.lo)
-					seriesPlot(SKu)
+					seriesPlot(SKu,  SeasonPoint = list(size=0.03))
 					ret <- list(SKu=SKu)
 					# OK, can we do FAC?
 					if(DoFAC) {
-						if(DoReg) {
-							RegSer <- regularSeries(as.double(temp.df[["FAC"]]), 
-																			temp.df[[DATES]],
-																			begin=estrend.in$Start,
-																			end=estrend.in$End, 
-																			k.period=12/NumSeas)
-						} else
-							RegSer <- regularSeries(as.double(temp.df[["FAC"]]), 
-																			temp.df[[DATES]],
-																			k.period=12/NumSeas)
+						RegSer <- mkRegSer(temp.df, sname, DATES, monthly, NumSeas, picks,
+															 DoReg, estrend.in$Start, estrend.in$End, FALSE, TRUE)
 						## Do it, maintain names
 						Name <- paste("FAC", sname, sep=".")
 						names(RegSer)[4L] <- Name
@@ -153,26 +194,15 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 						text(0, 1, paste(txt, collapse="\n"), family="mono", adj=c(0,1))
 						options(warn)
 						setGraph(2, AA.lo)
-						seriesPlot(SKu)
+						seriesPlot(SKu,  SeasonPoint = list(size=0.03))
 						ret$SKFAC <- SKu
 					} # End of FAC
 				} else { # do not meet censoring criterion
-					temp.df$.ndx. <- seq(nrow(temp.df)) # Index to censored data
-					if(DoReg) {
-						RegSer <- regularSeries(temp.df$.ndx., 
-																		temp.df[[DATES]],
-																		begin=estrend.in$Start,
-																		end=estrend.in$End, 
-																		k.period=12/NumSeas)
-					} else
-						RegSer <- regularSeries(temp.df$.ndx., 
-																		temp.df[[DATES]],
-																		k.period=12/NumSeas)
-					## Replace Value with the censored data
-					RegSer$Value <- as.lcens(temp.df[[sname]])[RegSer$Value]
+					RegSer <- mkRegSer(temp.df, sname, DATES, monthly, NumSeas, picks,
+														 DoReg, estrend.in$Start, estrend.in$End, TRUE, FALSE)
 					## Do it, finagles used to maintain names
 					names(RegSer)[4L] <- sname
-					SKu <- eval(parse(text=paste("censSeaken(", sname, ",",
+					SKc <- eval(parse(text=paste("censSeaken(", sname, ",",
 																			 NumSeas, ")", sep="")),
 											envir=RegSer)
 					## Create report
@@ -180,13 +210,13 @@ SKTrends <- function(Stations="All", Snames="All", use.logs=TRUE,
 					setGraph(1, AA.lo)
 					par(mar=c(0,0,0,0), usr=c(0,1,0,1))
 					txt <- c(paste(station, sname, sep="  "),
-									 capture.output(print(SKu)))
+									 capture.output(print(SKc)))
 					options(warn=-1)
 					text(0, 1, paste(txt, collapse="\n"), family="mono", adj=c(0,1))
 					options(warn)
 					setGraph(2, AA.lo)
-					seriesPlot(SKu)
-					ret <- list(SKc=SKu)
+					seriesPlot(SKc,  SeasonPoint = list(size=0.03))
+					ret <- list(SKc=SKc)
 				}
 				estrend.sk[station, sname][[1L]] <- ret # Pack it up
 			}

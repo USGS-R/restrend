@@ -51,8 +51,8 @@ getTrends <- function(Stations="All", Snames="All", sig.level=0.05) {
 		Snames <- estrend.in$snames
 	retval <- list()
 	i <- 0L
-	## Seasonal Kendall
-	if(estrend.in$type == "seasonal") {
+	## Seasonal or monthly Kendall
+	if(estrend.in$type %in% c("seasonal", "monthly")) {
 		estrend.sk <- get("estrend.sk", pos=pos)
 		for(station in Stations) {
 			for(sname in Snames) {

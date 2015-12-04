@@ -1,0 +1,168 @@
+\documentclass{article}
+\parskip 6pt
+\usepackage{pdfpages}
+\usepackage[margin=1.25in]{geometry}
+\usepackage[colorlinks=true,urlcolor=blue]{hyperref}
+
+%\VignetteIndexEntry{Regional Trends}
+%\VignetteDepends{restrend}
+%\VignetteDepends{smwrBase}
+%\VignetteDepends{smwrQW}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\raggedright
+
+\title{Regional Trend Analysis of Kjeldahl Nitrogen}
+
+\author{Dave Lorenz}
+
+\maketitle
+
+\begin{abstract}
+This example illustrates the data manipulations for the regional seasonal Kendall analysis. The example uses kjeldahl nitrogen data. The regional seasonal Kendall analysis requires a common time frame for all of the trend tests. 
+\end{abstract}
+
+\tableofcontents
+
+\eject
+\section{Introduction}
+
+The data used in this application are a small subset of the data used by Schertz and others (1991). The data are samples taken from water year 1969 (October, 1968) through water year 1989 (September, 1989). Nineteen stations were selected and kjeldahl nitrogen selected from the original data.
+
+<<echo=TRUE>>=
+# Load restrend and other packages and the data
+library(restrend)
+library(smwrBase)
+library(smwrQW)
+data(EstrendSub)
+head(EstrendSub)
+@
+
+\eject
+\section{Summarize the Sample Data}
+
+In general, it is desirable, but not necessary, to subset the data before proceeding with the analysis of a subset of the constituents. Nutrient concentrations can vary widely in natural waters and can range from completely uncensored to highly censored. No flow adjustment will be done for these data becuase of the potential high variability in censoring--for these data, about 10 percent of ammonia samples are censored, but the other constituents have much lower percentages.
+
+<<echo=TRUE>>=
+# Convert to class qw
+EstrendSub.qw <- convert2qw(EstrendSub)
+# Create the subset
+KN <- subset(EstrendSub.qw, select=c("STAID", "DATES",
+  "PKjeldahl"))
+# Rename to remove leading P, not required--just pretty
+names(KN)[3] <- "Kjeldahl"
+# The sampling for nutrients started later, so remove the samples that
+# have no data.
+KN <- dropAllMissing(KN, "Kjeldahl")
+@
+
+The \texttt{sampReport} function creates a simple PDF file that contains a report of the sample date ranges and graph of samples for each station. It can be used to help define the starting and ending date ranges for the trend tests as well as identifying sample gaps and other sampling issues.
+
+<<echo=TRUE>>=
+# Create the report
+sampReport(KN, DATES="DATES", STAID="STAID", file="KNSampling")
+@
+
+\includepdf[pages={-}]{KNSampling.pdf}
+
+The call to \texttt{sampReport} returns the file name invisibly (KNSampling.pdf). Because it is a full-size portrait PDF file, it is inserted here with compressed pages. The report gives the actual begin and end dates for sampling and the graph shows the sampling dates for each station. It is easy to see that the pattern of sampling is very irregular from station to station. Note that this report only shows when a sample for Kjeldahl nitrogen was taken.
+
+\eject
+\section{Set up the Project}
+
+The user must balance the need to include as many stations as possible and the targeted time frame for the trend estimation. For these data, most Kjeldahl nitrogen sampling started in late 1974 and extended through late 1989.
+
+The \texttt(setProj) function sets up the trend estimation project. There are many arguments to \texttt(setProj), see the documentation for details. The constituent names or response variable names are referred to as \texttt{Snames} in keeping with the names used in the original ESTREND.
+
+After projects have been set up, the user can get a list of the projects by using \texttt{lsProj} or can specify a project to use with \texttt{useProj}. The function \texttt{useProj} must be used to continue working on a project after the user quits from the R session.
+
+<<echo=TRUE>>=
+# Set up the project
+setProj("kn", KN, STAID="STAID", DATES="DATES", 
+				Snames="Kjeldahl", 
+				type="seasonal", Start="1974-10-01", End="1989-10-01")
+@
+
+It is useful to verify which stations and snames will be analyzed and what the seasonal definitions are. The user need only enter the name of the R data object in the console. For these data, the seasonal definition is 0 in all cases where the status is not "OK." The percentage of censoring for all stations is also displayed from the code following this paragraph. The censoring levels from station 07297910 is shown becuase that station has greater than 5 percent censoring.
+
+<<echo=TRUE>>=
+# Which are OK?
+estrend.st
+# What seasonal definition?
+estrend.ss
+# What about censoring percentage?
+estrend.cp
+@
+
+\eject
+\section{Seasonal Kendall Trend Test}
+
+Eight stations "07227500," "07228000," "07297910," "07300000," "07308500," "07336820," "07343200," and "07346070" meet the criteria for analysis and each of those have the record for a 6-period seasonal Kendall analysis. But, station "07297910" has greater than 5 percent censoring and will be analyzed using the censored seasonal Kendall by default. There are 2 censoring levels for the data for that station, which complicates the analysis. If there were a single censoring level, then one could raise the percentage criterion for the uncensored test to 10 without substantially affecting the results(Helsel ref?), but that rule does not apply when there is more than one censoring level. The approach will be to accept the default of 5 percent censoring and rerun that station with the 10 percent criterion and compare the result. If they are similar, then accept the larger percent criterion and proceed. If they are substantially different, then that station will be dropped from the regional analysis.
+
+The function \texttt{SKTrends} executes the trend test on all valid combinations of stations and snames. It can also execute the test on subsets if some changes need to be made, as shown in the code immediately following this paragraph. The \texttt{SKTrends} function creates a PDF file that contains the result of the analysis and a series graph on each page. The results for 
+
+<<echo=TRUE>>=
+# Trend tests, accepting default seasons (6) and percent censoring (5)
+SKTrends()
+# repeat for the more highly censored stations
+# The use of the log transform must be turned off to make it comparable
+SKTrends(Stations="07297910", max.cens=10, use.logs=FALSE,
+  report="kn_07297910")
+@
+\includepdf[pages={3}]{kn_sk.pdf}
+\includepdf[pages={1}]{kn_07297910.pdf}
+
+The results are very similar---the value for tau changed from 0.20641 to 0.20463 and the slope changed from 0.025 to 0.0254. Proceed with the analyis, but use the log transform to be consistent with the other stations.
+
+<<echo=TRUE>>=
+# The log transform is turned on to make it comparable to the other stations
+SKTrends(Stations="07297910", max.cens=10, use.logs=TRUE,
+  report="kn_07297910_log")
+@
+
+\section{Regional Trend}
+
+When completed, or to check on intermediate results, the estimated trends can be extracted using the \texttt{getTrends} function. By default, all stations and snames are extracted. The output dataset is explained in the documentation for \texttt{getTrends}. The user has the option to set a significance level to determine whether there is a significant trend, the default level is 0.05. The code immediately following this paragraph illustrates the use of \texttt{getTrends}. For these Kjeldahl nitrogen stations, there are no significant trends at the alpha level of 0.05, but the trend is downward at most stations. 
+
+<<echo=TRUE>>=
+# get the trends
+kn.tnd <- getTrends()
+print(kn.tnd)
+@
+
+The \texttt{RSKTrends} function can be used to assess any regional trend. By default, all stations are used, but subsets can be specified for specific regions within the larger study. The \texttt{RSKTrends} function peforms the analysis on a single constituent (Sname), which must be specified in the call. Its use is illustrated in the code immediately following this paragraph. Four p-values are reported---the raw p-value, the p-value corrected for serial correlation, and two p-values corrected for serial and spatial correlation.  The raw p-value is based on the data without any correction for serial or spatial correlation. The second p-value is corrected only for serial correlation, similar to the seasonal Kendall test. The corrected p-value for serial and spatial correlation is based on Dietz and Killeen (1981) and the alternative p-value is based on the methods described by Douglas and others (2000). Two methods for correcting the p-value for spatial correlation are provided because the correction based on Dietz and Killeen (1981) appears excessive when there are a few highly correlated stations.
+
+<<echo=TRUE>>=
+# Any regional trend?
+RSKTrends(kn.tnd$Station, "Kjeldahl")
+@
+
+For these data, the raw p-value is less than the 0.05 level used for the seaonal Kendall tests, but the p-values corrected for serial correlation and for both serial and spatial correlation are greater than 0.05, indicating that the null hypothesis of no regional trend cannot be rejected.
+\eject
+\section{Further Remarks}
+
+Because trend analysis is not necessarily a straightforward process, but requires user assessments at several points in the process, it is not necessarily a good idea to simply create scripts and run them without any user review and interaction. To overcome recording the steps in a script, the functions in restrend record all changes to the projects database in a list called \texttt{estrend.cl}. It can be viewed at any time simply by entering estrend.cl in the console window. It can be saved with the data to ensure that the trend analysis is reproducible. Note that the use of the \texttt{getTrends} and \texttt{RSKTrends} functions is not recorded because they does not change anything recorded in the project database.
+
+<<echo=TRUE>>=
+# get the history
+estrend.cl
+@
+
+\begin{thebibliography}{9}
+
+\bibitem{DK}
+Dietz, E. J., and Killeen, T.J., 1981, A nonparametric multivariate test for monotone trend with pharmaceutical applications: Journal of the American Statistical Association, v. 76, p 169--174.
+
+\bibitem{DVK}
+Douglas, E.M., Vogel, R.M., and Kroll, C.N., 2000, Trends in floods and low flows in the United States: impact of spatial correlation: Journal of Hydrology, v. 240, p. 90--105. 
+
+\bibitem{Lor}
+Lorenz, D.L., in preparation, restrend: an R package for EStimate TRENDs: U.S. Geological Survey Open File Report, ? p.
+
+\bibitem{SAO}
+Schertz, T.L., Alexander, R.B., and Ohe, D.J., 1991, The computer program EStimate TREND (ESTREND), a system for the detection of trends in water-quality data: U.S. Geological Survey Water Resources Investigations Report 91-4040, 72 p. 
+
+\end{thebibliography}
+
+\end{document}

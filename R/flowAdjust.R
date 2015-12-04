@@ -36,7 +36,7 @@ flowAdjust <- function(Stations="All", Snames="All", use.logs=TRUE,
 	if(file.exists(report.name)) { # find one that works
 		i <- 1L
 		while(file.exists(report.name)) {
-			report.tmp <- paste(report, zeropad(i, 2), sep="_")
+			report.tmp <- paste(report, zeroPad(i, 2), sep="_")
 			report.name <- setFileType(report.tmp, type="pdf")
 			i <- i + 1L
 		}
