@@ -157,7 +157,15 @@ censSeaken <- function(series, nseas=12) {
   losl <- pmin(slopemaxy, slopeminy)
   hisl <- pmax(slopemaxy, slopeminy)
   ## compute median slope
+  
+  ###Use regular median if no censored data and equal slopes
+  if(all(losl==hisl)==TRUE)
+  {
+    helselslope <- median(losl)
+  } else {
 	helselslope <- median(as.mcens(losl, hisl))
+  }
+  
   method <- "Seasonal Kendall's tau with the Turnbull slope estimator"
   tau <- results[1L]/results[2L]* 2.0
   kenS <- results[1L]
