@@ -5,8 +5,6 @@
 #'
 #'\tabular{ll}{ Package: \tab restrend\cr 
 #'Type: \tab Package\cr 
-#'Version: \tab 0.4.1\cr 
-#'Date: \tab 2015-12-04\cr 
 #'License: \tab File LICENSE\cr 
 #'Depends: \tab g.data, smwrBase, smwrGraphs, smwrStats, smwrQW\cr }
 #'This package contains functions that facilitate testing for linear or monotonic trends 
@@ -17,9 +15,8 @@
 #' @name restrend-package
 #' @aliases restrend-package restrend
 #' @docType package
-#' @author Dave Lorenz <lorenz@@usgs.gov>
+#' @author Dave Lorenz 
 #'
-#'Maintainer: Dave Lorenz <lorenz@@usgs.gov>
 #' @seealso \code{\link[smwrQW:smwrQW-package]{smwrQW}}
 #' @import g.data dataRetrieval lubridate smwrBase smwrGraphs smwrStats smwrQW
 #' @references Lorenz, D.L., in preparation, restrend---an R package for trend
@@ -27,5 +24,16 @@
 #' @keywords package
 NULL
 .onAttach <- function(libname, pkgname) {
-	packageStartupMessage("Although this software program has been used by the U.S. Geological Survey (USGS), no warranty, expressed or implied, is made by the USGS or the U.S. Government as to the accuracy and functioning of the program and related program material nor shall the fact of distribution constitute any such warranty, and no responsibility is assumed by the USGS in connection therewith.")
+  packageStartupMessage("This information is preliminary or provisional and
+is subject to revision. It is being provided to meet
+the need for timely best science. The information
+has not received final approval by the U.S. Geological
+Survey (USGS) and is provided on the condition that
+neither the USGS nor the U.S. Government shall be held
+liable for any damages resulting from the authorized
+or unauthorized use of the information.
+
+****Orphaned Package****
+This package is looking for a new maintainer. For more information, 
+see: https://owi.usgs.gov/R/packages.html#orphan")
 }
