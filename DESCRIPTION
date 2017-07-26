@@ -1,7 +1,7 @@
 Package: restrend
 Type: Package
 Title: EStimate TRENDs
-Version: 0.4.1
+Version: 0.4.2
 Date: 2017-07-26
 Authors@R: c( person("Dave", "Lorenz", role = "cre", email = "gs-w_r_admin@usgs.gov"))
 Description: Collection of functions to estimate linear or monotonic trends in
