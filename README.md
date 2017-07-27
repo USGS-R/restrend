@@ -21,7 +21,7 @@ Please consider reporting bugs and asking questions on the Issues page:
 
 Follow `@USGS-R` on Twitter for updates on USGS R packages:
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/USGS-R.svg?style=social&label=Follow)](https://twitter.com/USGS_-_R)
+[![Twitter Follow](https://img.shields.io/twitter/follow/USGS-R.svg?style=social&label=Follow)](https://twitter.com/USGS_R)
 
 
 ### Current build tests:
