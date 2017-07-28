@@ -1,10 +1,9 @@
 Package: restrend
 Type: Package
 Title: EStimate TRENDs
-Version: 0.4.1
-Date: 2015-12-04
-Author: Dave Lorenz
-Maintainer: Dave Lorenz <lorenz@usgs.gov>
+Version: 0.4.2
+Date: 2017-07-26
+Authors@R: c( person("Dave", "Lorenz", role = "cre", email = "gs-w_r_admin@usgs.gov"))
 Description: Collection of functions to estimate linear or monotonic trends in
     hydrologic data.
 License: CC0
@@ -18,5 +17,6 @@ Imports:
     smwrGraphs,
     smwrStats,
     smwrQW
+BugReports: https://github.com/USGS-R/restrend/issues
 LazyLoad: yes
 LazyData: yes
